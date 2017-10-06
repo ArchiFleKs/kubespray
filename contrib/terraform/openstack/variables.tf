@@ -1,33 +1,49 @@
+variable "username" {
+  description = "Your openstack username"
+}
+
+variable "password" {
+  description = "Your openstack password"
+}
+
+variable "project_name" {
+  description = "Your openstack tenant/project"
+}
+
+variable "auth_url" {
+  description = "Your openstack auth URL"
+}
+
 variable "cluster_name" {
-  default = "example"
+  default = "k8s"
 }
 
 variable "number_of_k8s_masters" {
-  default = 2
+  default = 1
 }
 
 variable "number_of_k8s_masters_no_etcd" {
-  default = 2
+  default = 0
 }
 
 variable "number_of_etcd" {
-  default = 2
+  default = 0
 }
 
 variable "number_of_k8s_masters_no_floating_ip" {
-  default = 2
+  default = 0
 }
 
 variable "number_of_k8s_masters_no_floating_ip_no_etcd" {
-  default = 2
+  default = 0
 }
 
 variable "number_of_k8s_nodes" {
-  default = 1
+  default = 3
 }
 
 variable "number_of_k8s_nodes_no_floating_ip" {
-  default = 1
+  default = 0
 }
 
 variable "number_of_gfs_nodes_no_floating_ip" {
@@ -45,7 +61,7 @@ variable "public_key_path" {
 
 variable "image" {
   description = "the image to use"
-  default = "ubuntu-14.04"
+  default = "ubuntu-16.04"
 }
 
 variable "image_gfs" {
@@ -79,28 +95,27 @@ variable "flavor_gfs_node" {
   default = 3
 }
 
-variable "network_name" {
-  description = "name of the internal network to use"
-  default = "internal"
+variable "floatingip_network_id" {
+  description = "ID of the floating ip pool to use"
+  default = "public"
 }
 
 variable "floatingip_pool" {
   description = "name of the floating ip pool to use"
-  default = "external"
+  default = "public"
 }
 
-variable "username" {
-  description = "Your openstack username"
+variable "private_network_cidr" {
+  description = "private network cidr"
+  default = "10.42.42.0/24"
 }
 
-variable "password" {
-  description = "Your openstack password"
+variable "kube_pods_subnet" {
+  description = "Pods subnet CIDR"
+  default = "10.233.64.0/18"
 }
 
-variable "tenant" {
-  description = "Your openstack tenant/project"
-}
-
-variable "auth_url" {
-  description = "Your openstack auth URL"
+variable "kube_service_addresses" {
+  description = "Kubernetes Services ClusterIP CIDR"
+  default = "10.233.0.0/18"
 }
