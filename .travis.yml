@@ -1,0 +1,68 @@
+language: python
+python:
+  - "2.7"
+branches:
+  only:
+  - dev
+cache:
+  directories:
+  - "${HOME}/bin"
+env:
+  global:
+    - PATH="${HOME}/bin:${PATH}"
+    - TMPDIR="${TMPDIR:-/tmp}"
+    - TERRAFORM_VERSION="0.10.7"
+    - HELM_VERSION="v2.6.2"
+    - KUBECONFIG="${TRAVIS_BUILD_DIR}/artifacts/admin.conf"
+    - TERRAFORM_DIR="${TRAVIS_BUILD_DIR}/contrib/terraform/openstack"
+    - TERRAFORM_VARS="variables.tfvars"
+    - ANSIBLE_USER="core"
+    - ANSIBLE_INVENTORY="${TERRAFORM_DIR}/openstack.py"
+    - TF_VAR_public_key_path="${TRAVIS_BUILD_DIR}/automation.pub"
+    - SSH_PRIVATE_KEY_PATH="${TRAVIS_BUILD_DIR}/automation.key"
+before_install:
+  - openssl aes-256-cbc -K $encrypted_70983d80ce75_key -iv $encrypted_70983d80ce75_iv -in secrets.tar.enc -out secrets.tar -d
+  - tar xvf secrets.tar
+  - eval $(ssh-agent -s)
+  - chmod 600 ${SSH_PRIVATE_KEY_PATH}
+  - ssh-add ${SSH_PRIVATE_KEY_PATH}
+  - source openrc
+install:
+  - pip install -U ansible jinja2 python-openstackclient shade ;
+    ansible --version
+  - pushd "${TMPDIR}" ;
+    curl -sSL
+      -o terraform.zip
+      "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" ;
+    unzip terraform.zip ;
+    mv -v terraform "${HOME}/bin/terraform" ;
+    chmod +x "${HOME}/bin/terraform" ;
+    popd ;
+    terraform version
+  - push "${TMPDIR}" ;
+    wget -qO- "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar xvz --strip-components=1 ;
+    mv -v helm "${HOME}/bin/helm" ;
+    chmod +x "${HOME}/bin/helm" ;
+    popd ;
+    helm version --client
+  - push "${TMPDIR}" ;
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl ;
+    mv -v kubectl "${HOME}/bin/kubectl" ;
+    chmod +x "${HOME}/bin/kubectl" ;
+    popd ;
+    kubectl version --client
+script:
+  - pushd "${TERRAFORM_DIR}";
+    ${ANSIBLE_INVENTORY} --refresh --list
+  - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipterra"* ]] ; then
+      terraform init -force-copy -get=true -get-plugins=true ;
+      terraform apply -var-file ${TERRAFORM_VARS} -auto-approve=true ;
+      ${ANSIBLE_INVENTORY} --refresh --list ;
+    fi
+  - popd
+  - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipansible"* ]] ; then
+      ansible-playbook -i ${ANSIBLE_INVENTORY} wait_ssh.yml -e ansible_user=${ANSIBLE_USER} ;
+    fi
+  - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipansible"* ]] ; then
+      ansible-playbook -i ${ANSIBLE_INVENTORY} cluster.yml -b -e ansible_user=${ANSIBLE_USER} ;
+    fi
