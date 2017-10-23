@@ -1,5 +1,5 @@
 # Valid bootstrap options (required): ubuntu, coreos, centos, none
-bootstrap_os: none
+bootstrap_os: coreos
 
 #Directory where etcd data stored
 etcd_data_dir: /var/lib/etcd
@@ -59,7 +59,7 @@ bin_dir: /usr/local/bin
 ## If set the possible values are either 'gce', 'aws', 'azure', 'openstack', or 'vsphere'
 ## When openstack is used make sure to source in the openstack credentials
 ## like you would do when using nova-client before starting the playbook.
-#cloud_provider:
+cloud_provider: "openstack"
 
 ## When azure is used, you need to also set the following variables.
 ## see docs/azure.md for details on how to get these values
@@ -75,15 +75,15 @@ bin_dir: /usr/local/bin
 #azure_route_table_name:
 
 ## When OpenStack is used, Cinder version can be explicitly specified if autodetection fails (https://github.com/kubernetes/kubernetes/issues/50461)
-#openstack_blockstorage_version: "v1/v2/auto (default)"
+openstack_blockstorage_version: "v2"
 ## When OpenStack is used, if LBaaSv2 is available you can enable it with the following variables.
-#openstack_lbaas_enabled: True
-#openstack_lbaas_subnet_id: "Neutron subnet ID (not network ID) to create LBaaS VIP"
-#openstack_lbaas_floating_network_id: "Neutron network ID (not subnet ID) to get floating IP from, disabled by default"
-#openstack_lbaas_create_monitor: "yes"
-#openstack_lbaas_monitor_delay: "1m"
-#openstack_lbaas_monitor_timeout: "30s"
-#openstack_lbaas_monitor_max_retries: "3"
+openstack_lbaas_enabled: True
+openstack_lbaas_subnet_id: "63c8a097-f2b3-4f32-96eb-3d49f7bb4517"
+openstack_lbaas_floating_network_id: "eff1c63a-fc80-4c47-94ba-e0ef9173d97f"
+openstack_lbaas_create_monitor: "yes"
+openstack_lbaas_monitor_delay: "1m"
+openstack_lbaas_monitor_timeout: "30s"
+openstack_lbaas_monitor_max_retries: "3"
 
 ## Uncomment to enable experimental kubeadm deployment mode
 #kubeadm_enabled: false
