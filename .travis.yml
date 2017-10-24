@@ -7,6 +7,10 @@ branches:
 cache:
   directories:
   - "${HOME}/bin"
+addons:
+  apt:
+    packages:
+    - jq
 env:
   global:
     - PATH="${HOME}/bin:${PATH}"
@@ -66,3 +70,8 @@ script:
   - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipansible"* ]] ; then
       ansible-playbook -i ${ANSIBLE_INVENTORY} cluster.yml -b -e ansible_user=${ANSIBLE_USER} ;
     fi
+  - sed -i -r 's/(\b[0-9]{1,3}\.){3}[0-9]{1,3}\b'/$(${ANSIBLE_INVENTORY} --refresh --list | jq -r '."kube-master"[0] as $master | ._meta.hostvars[$master].openstack.public_v4')/ ${KUBECONFIG}
+  - sed -i -e 's/certificate-authority-data.*/insecure-skip-tls-verify: true/' ${KUBECONFIG}
+  - kubectl version
+  - helm version
+  - kubectl get nodes -o wide
