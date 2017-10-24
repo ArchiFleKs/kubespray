@@ -5,6 +5,7 @@ branches:
   only:
   - dev
 cache:
+  pip: true
   directories:
   - "${HOME}/bin"
 addons:
@@ -17,6 +18,7 @@ env:
     - TMPDIR="${TMPDIR:-/tmp}"
     - TERRAFORM_VERSION="0.10.7"
     - HELM_VERSION="v2.6.2"
+    - JQ_VERSION="1.5"
     - KUBECONFIG="${TRAVIS_BUILD_DIR}/artifacts/admin.conf"
     - TERRAFORM_DIR="${TRAVIS_BUILD_DIR}/contrib/terraform/openstack"
     - TERRAFORM_VARS="variables.tfvars"
@@ -34,27 +36,43 @@ before_install:
 install:
   - pip install -U ansible jinja2 python-openstackclient shade ;
     ansible --version
-  - pushd "${TMPDIR}" ;
-    curl -sSL
-      -o terraform.zip
-      "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" ;
-    unzip terraform.zip ;
-    mv -v terraform "${HOME}/bin/terraform" ;
-    chmod +x "${HOME}/bin/terraform" ;
-    popd ;
-    terraform version
-  - push "${TMPDIR}" ;
-    wget -qO- "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar xvz --strip-components=1 ;
-    mv -v helm "${HOME}/bin/helm" ;
-    chmod +x "${HOME}/bin/helm" ;
-    popd ;
-    helm version --client
-  - push "${TMPDIR}" ;
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl ;
-    mv -v kubectl "${HOME}/bin/kubectl" ;
-    chmod +x "${HOME}/bin/kubectl" ;
-    popd ;
-    kubectl version --client
+  - if ! terraform version ; then
+      pushd "${TMPDIR}" ;
+      curl -sSL
+        -o terraform.zip
+        "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" ;
+      unzip terraform.zip ;
+      mv -v terraform "${HOME}/bin/terraform" ;
+      chmod +x "${HOME}/bin/terraform" ;
+      popd ;
+      terraform version ;
+    fi
+  - if ! helm version --client ; then
+      push "${TMPDIR}" ;
+      wget -qO- "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar xvz --strip-components=1 ;
+      mv -v helm "${HOME}/bin/helm" ;
+      chmod +x "${HOME}/bin/helm" ;
+      popd ;
+      helm version --client ;
+    fi
+  - if ! kubectl version --client ; then
+      push "${TMPDIR}" ;
+      curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl ;
+      mv -v kubectl "${HOME}/bin/kubectl" ;
+      chmod +x "${HOME}/bin/kubectl" ;
+      popd ;
+      kubectl version --client ;
+    fi
+  - if ! jq --version ; then
+      push "${TMPDIR}" ;
+      curl -sSL
+      -o jq
+      "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64"
+      mv -v jq "${HOME}/bin/jq" ;
+      chmod +x "${HOME}/bin/kubectl" ;
+      popd ;
+      jq --version ;
+    fi
 script:
   - pushd "${TERRAFORM_DIR}";
     ${ANSIBLE_INVENTORY} --refresh --list
@@ -70,8 +88,16 @@ script:
   - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipansible"* ]] ; then
       ansible-playbook -i ${ANSIBLE_INVENTORY} cluster.yml -b -e ansible_user=${ANSIBLE_USER} ;
     fi
+  - if [ ! -f ${KUBECONFIG} ]; then
+      ansible -b -m fetch
+              -a "src=/etc/kubernetes/admin.conf dest=${KUBECONFIG} flat=yes"
+              -i ${ANSIBLE_INVENTORY}
+              -e 'ansible_user=core'
+              -e 'ansible_python_interpreter=/opt/bin/python'
+              '*master-1*' ;
+    fi
   - sed -i -r 's/(\b[0-9]{1,3}\.){3}[0-9]{1,3}\b'/$(${ANSIBLE_INVENTORY} --refresh --list | jq -r '."kube-master"[0] as $master | ._meta.hostvars[$master].openstack.public_v4')/ ${KUBECONFIG}
-  - sed -i -e 's/certificate-authority-data.*/insecure-skip-tls-verify: true/' ${KUBECONFIG}
+  - "sed -i -e 's/certificate-authority-data.*/insecure-skip-tls-verify: true/' ${KUBECONFIG}"
   - kubectl version
   - helm version
   - kubectl get nodes -o wide
