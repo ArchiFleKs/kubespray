@@ -87,7 +87,7 @@ weave_seed: uninitialized
 weave_peers: uninitialized
 
 # Enable kubernetes network policies
-enable_network_policy: false
+enable_network_policy: true
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18
