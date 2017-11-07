@@ -16,8 +16,8 @@ env:
   global:
     - PATH="${HOME}/bin:${PATH}"
     - TMPDIR="${TMPDIR:-/tmp}"
-    - TERRAFORM_VERSION="0.10.7"
-    - HELM_VERSION="v2.6.2"
+    - TERRAFORM_VERSION="0.10.8"
+    - HELM_VERSION="v2.7.0"
     - JQ_VERSION="1.5"
     - KUBECONFIG="${TRAVIS_BUILD_DIR}/artifacts/admin.conf"
     - TERRAFORM_DIR="${TRAVIS_BUILD_DIR}/contrib/terraform/openstack"
@@ -48,7 +48,7 @@ install:
       terraform version ;
     fi
   - if ! helm version --client ; then
-      push "${TMPDIR}" ;
+      pushd "${TMPDIR}" ;
       wget -qO- "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar xvz --strip-components=1 ;
       mv -v helm "${HOME}/bin/helm" ;
       chmod +x "${HOME}/bin/helm" ;
