@@ -127,3 +127,7 @@ variable "tenant" {
 variable "auth_url" {
   description = "Your openstack auth URL"
 }
+
+variable "domain_id" {
+  description = "Your openstack domain ID"
+}
