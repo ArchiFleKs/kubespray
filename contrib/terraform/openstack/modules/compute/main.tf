@@ -1,14 +1,3 @@
-
-
-variable user_data  {
-  type    = "string"
-  default = <<EOF
-#cloud-config
-manage_etc_hosts: localhost
-package_update: true
-package_upgrade: true
-EOF
-}
 resource "openstack_compute_keypair_v2" "k8s" {
     name = "kubernetes-${var.cluster_name}"
     public_key = "${chomp(file(var.public_key_path))}"
@@ -87,7 +76,6 @@ resource "openstack_compute_instance_v2" "bastion" {
 	     command = "sed s/USER/${var.ssh_user}/ contrib/terraform/openstack/ansible_bastion_template.txt | sed s/BASTION_ADDRESS/${var.bastion_fips[0]}/ > contrib/terraform/openstack/group_vars/no-floating.yml"
     }
 
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_instance_v2" "k8s_master" {
@@ -108,7 +96,6 @@ resource "openstack_compute_instance_v2" "k8s_master" {
         kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
@@ -127,7 +114,6 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
         kubespray_groups = "kube-master,kube-node,k8s-cluster,vault"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_instance_v2" "etcd" {
@@ -145,7 +131,6 @@ resource "openstack_compute_instance_v2" "etcd" {
         kubespray_groups = "etcd,vault,no-floating"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 
@@ -166,7 +151,6 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
         kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault,no-floating"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
@@ -185,7 +169,6 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
         kubespray_groups = "kube-master,kube-node,k8s-cluster,vault,no-floating"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 
@@ -206,7 +189,6 @@ resource "openstack_compute_instance_v2" "k8s_node" {
         kubespray_groups = "kube-node,k8s-cluster"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
@@ -225,7 +207,6 @@ resource "openstack_compute_instance_v2" "k8s_node_no_floating_ip" {
         kubespray_groups = "kube-node,k8s-cluster,no-floating"
         depends_on = "${var.network_id}"
     }
-    user_data = "${var.user_data}"
 }
 
 resource "openstack_compute_floatingip_associate_v2" "bastion" {
@@ -270,7 +251,6 @@ resource "openstack_compute_instance_v2" "glusterfs_node_no_floating_ip" {
         kubespray_groups = "gfs-cluster,network-storage,no-floating"
         depends_on = "${var.network_id}"
     }
-    user_data = "#cloud-config\nmanage_etc_hosts: localhost\npackage_update: true\npackage_upgrade: true"
 }
 
 resource "openstack_compute_volume_attach_v2" "glusterfs_volume" {
