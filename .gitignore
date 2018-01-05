@@ -93,3 +93,9 @@ target/
 # virtualenv
 venv/
 ENV/
+
+# openstack
+clouds.yml
+clouds.yaml
+openrc
+secrets.tar

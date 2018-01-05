@@ -1,0 +1,106 @@
+language: python
+python:
+  - "2.7"
+branches:
+  only:
+  - osa
+cache:
+  pip: true
+  directories:
+  - "${HOME}/bin"
+addons:
+  apt:
+    packages:
+    - jq
+env:
+  global:
+    - PATH="${HOME}/bin:${PATH}"
+    - TMPDIR="${TMPDIR:-/tmp}"
+    - TERRAFORM_VERSION="0.11.2"
+    - HELM_VERSION="v2.7.2"
+    - JQ_VERSION="1.5"
+    - GIT_CONFIG_REPO="https://raw.githubusercontent.com/ArchiFleKs/kubespray-cluster/master/osa"
+    - KUBECONFIG="${TRAVIS_BUILD_DIR}/artifacts/admin.conf"
+    - TERRAFORM_DIR="${TRAVIS_BUILD_DIR}/contrib/terraform/openstack"
+    - TERRAFORM_VARS_LOCAL="${TERRAFORM_DIR}/variables.tfvars"
+    - TERRAFORM_VARS_REMOTE="${GIT_CONFIG_REPO}/variables.tfvars"
+    - TERRAFORM_CUSTOM_CONFIG_LOCAL="${TERRAFORM_DIR}/state.tf"
+    - TERRAFORM_CUSTOM_CONFIG_REMOTE="${GIT_CONFIG_REPO}/state.tf"
+    - TERRAFORM_STATE_LOCAL="${TERRAFORM_DIR}/terraform.tfstate"
+    - ANSIBLE_USER="core"
+    - ANSIBLE_INVENTORY="${TERRAFORM_DIR}/hosts"
+    - ANSIBLE_WAIT_SSH_LOCAL="${TRAVIS_BUILD_DIR}/wait_ssh.yml"
+    - ANSIBLE_WAIT_SSH_REMOTE="${GIT_CONFIG_REPO}/wait_ssh.yml"
+    - KUBESPRAY_VARS_LOCAL="${TRAVIS_BUILD_DIR}/user_variables.yml"
+    - KUBESPRAY_VARS_REMOTE="${GIT_CONFIG_REPO}/user_variables.yml"
+    - TF_VAR_public_key_path="${TRAVIS_BUILD_DIR}/automation.pub"
+    - SSH_PRIVATE_KEY_PATH="${TRAVIS_BUILD_DIR}/automation.key"
+before_install:
+  - openssl aes-256-cbc -K $encrypted_70983d80ce75_key -iv $encrypted_70983d80ce75_iv -in secrets.tar.enc -out secrets.tar -d
+  - tar xvf secrets.tar
+  - eval $(ssh-agent -s)
+  - chmod 600 ${SSH_PRIVATE_KEY_PATH}
+  - ssh-add ${SSH_PRIVATE_KEY_PATH}
+  - source openrc
+install:
+  - pip install -U ansible jinja2 python-openstackclient shade ;
+    ansible --version
+  - if ! terraform version ; then
+      pushd "${TMPDIR}" ;
+      curl -sSL
+        -o terraform.zip
+        "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" ;
+      unzip terraform.zip ;
+      mv -v terraform "${HOME}/bin/terraform" ;
+      chmod +x "${HOME}/bin/terraform" ;
+      popd ;
+      terraform version ;
+    fi
+  - if ! helm version --client ; then
+      pushd "${TMPDIR}" ;
+      wget -qO- "https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar xvz --strip-components=1 ;
+      mv -v helm "${HOME}/bin/helm" ;
+      chmod +x "${HOME}/bin/helm" ;
+      popd ;
+      helm version --client ;
+    fi
+  - if ! kubectl version --client ; then
+      push "${TMPDIR}" ;
+      curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl ;
+      mv -v kubectl "${HOME}/bin/kubectl" ;
+      chmod +x "${HOME}/bin/kubectl" ;
+      popd ;
+      kubectl version --client ;
+    fi
+  - if ! jq --version ; then
+      push "${TMPDIR}" ;
+      curl -sSL
+      -o jq
+      "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64"
+      mv -v jq "${HOME}/bin/jq" ;
+      chmod +x "${HOME}/bin/kubectl" ;
+      popd ;
+      jq --version ;
+    fi
+script:
+  - curl -sSL -o "${TERRAFORM_VARS_LOCAL}" "${TERRAFORM_VARS_REMOTE}"
+  - curl -sSL -o "${TERRAFORM_CUSTOM_CONFIG_LOCAL}" "${TERRAFORM_CUSTOM_CONFIG_REMOTE}"
+  - curl -sSL -o "${KUBESPRAY_VARS_LOCAL}" "${KUBESPRAY_VARS_REMOTE}"
+  - curl -sSL -o "${ANSIBLE_WAIT_SSH_LOCAL}" "${ANSIBLE_WAIT_SSH_REMOTE}"
+  - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipterra"* ]] ; then
+      pushd "${TERRAFORM_DIR}";
+      terraform init -force-copy -get=true -get-plugins=true ;
+      terraform apply -var-file ${TERRAFORM_VARS_LOCAL} -auto-approve=true ;
+      terraform state pull > ${TERRAFORM_STATE_LOCAL} ;
+      popd;
+    fi
+  - if [[ ${TRAVIS_COMMIT_MESSAGE} != *"skipansible"* ]] ; then
+      ansible-playbook -i ${ANSIBLE_INVENTORY} wait_ssh.yml ;
+      ansible-playbook -b -i ${ANSIBLE_INVENTORY} cluster.yml -e @${KUBESPRAY_VARS_LOCAL} -e openstack_lbaas_subnet_id=$(terraform output -state ${TERRAFORM_STATE_LOCAL} $private_subnet_id) -e openstack_lbaas_floating_network_id=$(terraform output -state ${TERRAFORM_STATE_LOCAL} floating_network_id) ;
+    fi
+  - if [ ! -f ${KUBECONFIG} ]; then
+      ansible -b -m fetch -a "src=/etc/kubernetes/admin.conf dest=${KUBECONFIG} flat=yes" -i ${ANSIBLE_INVENTORY} '*master-1*' ;
+    fi
+  - kubectl version
+  - helm version
+  - kubectl get nodes -o wide --show-labels
