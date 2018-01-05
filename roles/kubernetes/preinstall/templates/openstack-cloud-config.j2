@@ -15,7 +15,7 @@ domain-id ="{{ openstack_domain_id }}"
 bs-version={{ openstack_blockstorage_version }}
 {% endif %}
 
-{% if openstack_lbaas_enabled and openstack_lbaas_subnet_id %}
+{% if openstack_lbaas_enabled and openstack_lbaas_subnet_id is defined %}
 [LoadBalancer]
 subnet-id={{ openstack_lbaas_subnet_id }}
 {% if openstack_lbaas_floating_network_id is defined %}
