@@ -93,7 +93,7 @@ resource "openstack_compute_instance_v2" "k8s_master" {
                         "default" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault"
+        kubespray_groups = "etcd,kube-master,k8s-cluster,vault"
         depends_on = "${var.network_id}"
     }
 }
@@ -111,7 +111,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_etcd" {
                         "${openstack_compute_secgroup_v2.k8s.name}" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "kube-master,kube-node,k8s-cluster,vault"
+        kubespray_groups = "kube-master,k8s-cluster,vault"
         depends_on = "${var.network_id}"
     }
 }
@@ -148,7 +148,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip" {
                         "default" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "etcd,kube-master,kube-node,k8s-cluster,vault,no-floating"
+        kubespray_groups = "etcd,kube-master,k8s-cluster,vault,no-floating"
         depends_on = "${var.network_id}"
     }
 }
@@ -166,7 +166,7 @@ resource "openstack_compute_instance_v2" "k8s_master_no_floating_ip_no_etcd" {
                         "${openstack_compute_secgroup_v2.k8s.name}" ]
     metadata = {
         ssh_user = "${var.ssh_user}"
-        kubespray_groups = "kube-master,kube-node,k8s-cluster,vault,no-floating"
+        kubespray_groups = "kube-master,k8s-cluster,vault,no-floating"
         depends_on = "${var.network_id}"
     }
 }
